@@ -22,7 +22,17 @@ module InheritedResources
       def collection
         get_collection_ivar || begin
           c = end_of_association_chain
-          set_collection_ivar(c.respond_to?(:scoped) ? c.scoped : c.all)
+          if c.respond_to?(:not_archived)
+            c = c.not_archived
+          else
+            c = c.scoped
+          end
+          @search = c.search(params[:search])
+          if @search.respond_to?(:paginate)
+            c = @search.paginate(pagination_options)
+          end
+
+          set_collection_ivar(c)
         end
       end
 
@@ -41,7 +51,9 @@ module InheritedResources
       # probably render a 500 error message.
       #
       def resource
-        get_resource_ivar || set_resource_ivar(end_of_association_chain.send(method_for_find, params[:id]))
+        object = get_resource_ivar || set_resource_ivar(end_of_association_chain.send(method_for_find, params[:id]))
+        self.send(:initialize_resource)
+        object
       end
 
       # This method is responsable for building the object on :new and :create
@@ -49,7 +61,9 @@ module InheritedResources
       # instance variable.
       #
       def build_resource
-        get_resource_ivar || set_resource_ivar(end_of_association_chain.send(method_for_build, *resource_params))
+        object = get_resource_ivar || set_resource_ivar(end_of_association_chain.send(method_for_build, *resource_params))
+        self.send(:initialize_resource)
+        object
       end
 
       # Responsible for saving the resource on :create method. Overwriting this
@@ -139,7 +153,11 @@ module InheritedResources
       #    { }
       # end
 
-    private
+      private
+
+      def pagination_options
+        {:page => params[:page], :per_page => per_page, :order => 'created_at DESC'}
+      end
 
       # Adds the given object to association chain.
       def with_chain(object)

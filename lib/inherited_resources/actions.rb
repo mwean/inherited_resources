@@ -16,12 +16,14 @@ module InheritedResources
 
     # GET /resources/new
     def new(options={}, &block)
+      load_select_array_for_create
       respond_with(*(with_chain(build_resource) << options), &block)
     end
     alias :new! :new
 
     # GET /resources/1/edit
     def edit(options={}, &block)
+      load_select_arrays_for_update
       respond_with(*(with_chain(resource) << options), &block)
     end
     alias :edit! :edit
